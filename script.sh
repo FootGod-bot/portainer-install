@@ -9,7 +9,7 @@ lsblk
 
 # Prompt user for drive
 read -p "Please enter the code for the drive to use for Docker (e.g., sdb): " DOCKER_DRIVE
-DOCKER_MOUNT="/mnt/docker"
+DOCKER_MOUNT="/docker"
 
 
 # Confirm choice
