@@ -3,7 +3,7 @@ set -e
 
 echo "==> Installing Docker"
 sudo apt update
-sudo apt install docker.io -y
+sudo apt install docker.io docker-compose -y
 echo "==> Listing available drives:"
 lsblk
 
