@@ -34,10 +34,6 @@ sudo mount "/dev/$DOCKER_DRIVE" "$DOCKER_MOUNT"
 grep -q "/dev/$DOCKER_DRIVE" /etc/fstab || echo "/dev/$DOCKER_DRIVE $DOCKER_MOUNT ext4 defaults 0 2" | sudo tee -a /etc/fstab
 sudo systemctl daemon-reload
 
-echo "==> Setting up Portainer"
-docker volume create portainer_data
-docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:lts
-
 echo "==> Setting Docker root to $DOCKER_MOUNT"
 sudo sh -c "echo '{
   \"data-root\": \"$DOCKER_MOUNT\"
