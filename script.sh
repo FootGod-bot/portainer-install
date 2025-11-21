@@ -32,7 +32,7 @@ sudo mount "/dev/$DOCKER_DRIVE" "$DOCKER_MOUNT"
 
 # Make permanent in fstab
 grep -q "/dev/$DOCKER_DRIVE" /etc/fstab || echo "/dev/$DOCKER_DRIVE $DOCKER_MOUNT ext4 defaults 0 2" | sudo tee -a /etc/fstab
-sudo systemctl dameon-reload
+sudo systemctl daemon-reload
 
 echo "==> Setting up Portainer"
 #temperarily set to mount point
