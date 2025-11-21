@@ -10,7 +10,7 @@ lsblk
 # Prompt user for drive
 read -p "Please enter the code for the drive to use for Docker (e.g., sdb): " DOCKER_DRIVE
 DOCKER_MOUNT="/mnt/docker"
-PORTAINER_DATA="/srv/portainer"
+
 
 # Confirm choice
 echo "Using /dev/$DOCKER_DRIVE for Docker root at $DOCKER_MOUNT"
@@ -35,16 +35,8 @@ grep -q "/dev/$DOCKER_DRIVE" /etc/fstab || echo "/dev/$DOCKER_DRIVE $DOCKER_MOUN
 sudo systemctl daemon-reload
 
 echo "==> Setting up Portainer"
-#temperarily set to mount point
-sudo mkdir -p /etc/docker
-sudo sh -c "echo '{
-  \"data-root\": \"$PORTAINER_DATA\"
-}' > /etc/docker/daemon.json"
-sudo systemctl restart docker
-# Install portainer
 docker volume create portainer_data
 docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:lts
-sudo rm /etc/docker/daemon.json
 
 echo "==> Setting Docker root to $DOCKER_MOUNT"
 sudo sh -c "echo '{
@@ -56,6 +48,9 @@ sudo sh -c "echo '{
 sudo systemctl restart docker
 echo "Docker root is now: $(docker info | grep 'Docker Root Dir')"
 
+echo "==> Setting up Portainer"
+docker volume create portainer_data
+docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:lts
 
 echo "==> Setup complete!"
 echo "Portainer data: $PORTAINER_DATA"
