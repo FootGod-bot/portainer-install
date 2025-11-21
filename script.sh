@@ -32,11 +32,10 @@ grep -q "/dev/$DOCKER_DRIVE" /etc/fstab || echo "/dev/$DOCKER_DRIVE $DOCKER_MOUN
 
 echo "==> Setting Docker root to $DOCKER_MOUNT"
 sudo mkdir -p /etc/docker
-cat | sudo tee /etc/docker/daemon.json > /dev/null <<EOF
-{
-  "data-root": "$DOCKER_MOUNT"
-}
-EOF
+sudo sh -c "echo '{
+  \"data-root\": \"$DOCKER_MOUNT\"
+}' > /etc/docker/daemon.json"
+
 
 # Restart Docker
 sudo systemctl restart docker
