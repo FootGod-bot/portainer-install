@@ -32,6 +32,7 @@ sudo mount "/dev/$DOCKER_DRIVE" "$DOCKER_MOUNT"
 
 # Make permanent in fstab
 grep -q "/dev/$DOCKER_DRIVE" /etc/fstab || echo "/dev/$DOCKER_DRIVE $DOCKER_MOUNT ext4 defaults 0 2" | sudo tee -a /etc/fstab
+sudo systemctl dameon-reload
 
 echo "==> Setting up Portainer"
 #temperarily set to mount point
@@ -59,3 +60,4 @@ echo "Docker root is now: $(docker info | grep 'Docker Root Dir')"
 echo "==> Setup complete!"
 echo "Portainer data: $PORTAINER_DATA"
 echo "Docker containers/images: $DOCKER_MOUNT"
+echo "Visit https://$(hostname -I | awk '{print $1}'):9443 to configure the web ui"
