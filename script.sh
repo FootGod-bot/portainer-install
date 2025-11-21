@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+echo "==> Installing Docker"
+sudo apt update
+sudo apt install docker.io -y
 echo "==> Listing available drives:"
 lsblk
 
