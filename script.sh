@@ -13,7 +13,7 @@ DOCKER_MOUNT="/mnt/docker"
 PORTAINER_DATA="/srv/portainer"
 
 # Confirm choice
-echo "Using $DOCKER_DRIVE for Docker root at $DOCKER_MOUNT"
+echo "Using /dev/$DOCKER_DRIVE for Docker root at $DOCKER_MOUNT"
 read -p "Continue? (y/n): " CONFIRM
 if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
     echo "Aborting."
@@ -33,8 +33,19 @@ sudo mount "/dev/$DOCKER_DRIVE" "$DOCKER_MOUNT"
 # Make permanent in fstab
 grep -q "/dev/$DOCKER_DRIVE" /etc/fstab || echo "/dev/$DOCKER_DRIVE $DOCKER_MOUNT ext4 defaults 0 2" | sudo tee -a /etc/fstab
 
-echo "==> Setting Docker root to $DOCKER_MOUNT"
+echo "==> Setting up Portainer"
+#temperarily set to mount point
 sudo mkdir -p /etc/docker
+sudo sh -c "echo '{
+  \"data-root\": \"$PORTAINER_DATA\"
+}' > /etc/docker/daemon.json"
+sudo systemctl restart docker
+# Install portainer
+docker volume create portainer_data
+docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:lts
+rm etc/docker/daemon.json
+
+echo "==> Setting Docker root to $DOCKER_MOUNT"
 sudo sh -c "echo '{
   \"data-root\": \"$DOCKER_MOUNT\"
 }' > /etc/docker/daemon.json"
@@ -44,22 +55,6 @@ sudo sh -c "echo '{
 sudo systemctl restart docker
 echo "Docker root is now: $(docker info | grep 'Docker Root Dir')"
 
-# Setup Portainer
-echo "==> Setting up Portainer on OS drive at $PORTAINER_DATA"
-sudo mkdir -p "$PORTAINER_DATA"
-
-# Stop/remove existing Portainer if present
-if docker ps -a --format '{{.Names}}' | grep -q '^portainer$'; then
-    docker stop portainer
-    docker rm portainer
-fi
-
-# Run Portainer
-docker run -d -p 9000:9000 --name portainer \
-    --restart=always \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v "$PORTAINER_DATA":/data \
-    portainer/portainer-ce
 
 echo "==> Setup complete!"
 echo "Portainer data: $PORTAINER_DATA"
