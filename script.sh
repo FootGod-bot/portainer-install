@@ -1,53 +1,64 @@
 #!/bin/bash
 set -e
 
-# Ask for the drive to use for Docker containers
-read -p "Enter the device for Docker containers (e.g., /dev/sdb): " DOCKER_DRIVE
-DOCKER_ROOT="/mnt/docker"
-PORTAINER_DATA="/srv/portainer_data"
+echo "==> Listing available drives:"
+lsblk
 
-# Format drive (WARNING: wipes the drive!)
-echo "Formatting $DOCKER_DRIVE..."
-sudo mkfs.ext4 -F "$DOCKER_DRIVE"
+# Prompt user for drive
+read -p "Please enter the code for the drive to use for Docker (e.g., sdb): " DOCKER_DRIVE
+DOCKER_MOUNT="/mnt/docker"
+PORTAINER_DATA="/srv/portainer"
 
-# Create mount point
-sudo mkdir -p "$DOCKER_ROOT"
-
-# Mount it
-sudo mount "$DOCKER_DRIVE" "$DOCKER_ROOT"
-
-# Add to fstab for persistent mount
-grep -q "$DOCKER_DRIVE" /etc/fstab || echo "$DOCKER_DRIVE $DOCKER_ROOT ext4 defaults 0 2" | sudo tee -a /etc/fstab
-
-# Install Docker if missing
-if ! command -v docker &> /dev/null; then
-    echo "Installing Docker..."
-    sudo apt update
-    sudo apt install -y docker.io
+# Confirm choice
+echo "Using $DOCKER_DRIVE for Docker root at $DOCKER_MOUNT"
+read -p "Continue? (y/n): " CONFIRM
+if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
+    echo "Aborting."
+    exit 1
 fi
 
-# Configure Docker data root
-sudo mkdir -p /etc/docker
-echo "{\"data-root\":\"$DOCKER_ROOT\"}" | sudo tee /etc/docker/daemon.json
+# Format the drive (WARNING: will erase everything!)
+echo "==> Formatting /dev/$DOCKER_DRIVE..."
+sudo mkfs.ext4 -F "/dev/$DOCKER_DRIVE"
 
-# Ensure tmp folder exists for Docker
-sudo mkdir -p "$DOCKER_ROOT/tmp"
-sudo chown -R root:docker "$DOCKER_ROOT"
-sudo chmod 711 "$DOCKER_ROOT/tmp"
+# Create mount point
+sudo mkdir -p "$DOCKER_MOUNT"
+
+# Mount it
+sudo mount "/dev/$DOCKER_DRIVE" "$DOCKER_MOUNT"
+
+# Make permanent in fstab
+grep -q "/dev/$DOCKER_DRIVE" /etc/fstab || echo "/dev/$DOCKER_DRIVE $DOCKER_MOUNT ext4 defaults 0 2" | sudo tee -a /etc/fstab
+
+echo "==> Setting Docker root to $DOCKER_MOUNT"
+sudo mkdir -p /etc/docker
+cat | sudo tee /etc/docker/daemon.json > /dev/null <<EOF
+{
+  "data-root": "$DOCKER_MOUNT"
+}
+EOF
 
 # Restart Docker
-sudo systemctl enable --now docker
+sudo systemctl restart docker
+echo "Docker root is now: $(docker info | grep 'Docker Root Dir')"
 
-# Prepare Portainer data folder on OS drive
+# Setup Portainer
+echo "==> Setting up Portainer on OS drive at $PORTAINER_DATA"
 sudo mkdir -p "$PORTAINER_DATA"
 
-# Remove old container if exists
-docker rm -f portainer 2>/dev/null || true
+# Stop/remove existing Portainer if present
+if docker ps -a --format '{{.Names}}' | grep -q '^portainer$'; then
+    docker stop portainer
+    docker rm portainer
+fi
 
-# Run Portainer with bind mount to OS drive
-docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v "$PORTAINER_DATA":/data \
-  portainer/portainer-ce:lts
+# Run Portainer
+docker run -d -p 9000:9000 --name portainer \
+    --restart=always \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v "$PORTAINER_DATA":/data \
+    portainer/portainer-ce
 
-echo "Portainer installed and running! Access it at https://<your-ip>:9443 or http://<your-ip>:8000"
+echo "==> Setup complete!"
+echo "Portainer data: $PORTAINER_DATA"
+echo "Docker containers/images: $DOCKER_MOUNT"
